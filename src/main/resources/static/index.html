@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Browser Session System</title>
+    <link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+<header class="topbar">
+    <div class="brand">Browser Session System</div>
+
+    <div class="controls">
+        <div class="field">
+            <label>Session</label>
+            <select id="sessionSelect"></select>
+            <button id="refreshBtn" class="btn">Refresh</button>
+        </div>
+
+        <div class="field">
+            <label>Create Session</label>
+            <input id="capacityInput" type="number" min="1" max="50" value="3"/>
+            <button id="createSessionBtn" class="btn primary">Create</button>
+        </div>
+
+        <div class="field">
+            <label>Undo / Redo</label>
+            <button id="undoBtn" class="btn">Undo</button>
+            <button id="redoBtn" class="btn">Redo</button>
+        </div>
+    </div>
+</header>
+
+<main class="layout">
+    <section class="workspace">
+        <div class="tabbar" id="tabbar"></div>
+
+        <div class="actionRow">
+            <input id="openUrlInput" class="urlInput" placeholder="https://example.com"/>
+            <button id="openTabBtn" class="btn primary">Open Tab</button>
+        </div>
+
+        <div class="panel">
+            <div class="panelTitle">Active Tab</div>
+            <div id="activeTabCard" class="card muted">No active tab selected.</div>
+        </div>
+
+        <div class="panel">
+            <div class="panelTitle">All Tabs</div>
+            <div id="tabsList" class="list"></div>
+        </div>
+    </section>
+
+    <aside class="drawer">
+        <div class="drawerSection">
+            <div class="drawerTitle">Analytics (Top-K)</div>
+            <div class="row">
+                <label>K</label>
+                <input id="kInput" type="number" min="1" value="5"/>
+                <label>Window (sec)</label>
+                <input id="windowInput" type="number" min="10" value="300"/>
+                <button id="analyticsBtn" class="btn">Load</button>
+            </div>
+            <div id="analyticsList" class="list"></div>
+        </div>
+
+        <div class="drawerSection">
+            <div class="drawerTitle">Evictions</div>
+            <div id="evictionsList" class="list"></div>
+        </div>
+
+        <div class="drawerSection">
+            <div class="drawerTitle">Activity</div>
+            <div id="activityList" class="list"></div>
+        </div>
+    </aside>
+</main>
+
+<div id="toast" class="toast hidden"></div>
+<script src="app.js"></script>
+</body>
+</html>

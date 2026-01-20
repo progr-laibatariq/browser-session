@@ -9,7 +9,7 @@
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>com.dsa</groupId>
-    <artifactId>browser-session</artifactId>
+    <artifactId>browser-session-LRU-tab-manager</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>Browser-Session</name>
     <description>Browser-Session</description>

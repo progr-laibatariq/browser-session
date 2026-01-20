@@ -1,6 +1,10 @@
 package com.dsa.browsersession.dao;
 
 import org.springframework.stereotype.Repository;
+import com.dsa.browsersession.domain.SessionSummary;
+import com.dsa.browsersession.dsa.array.DynamicArray;
+import java.sql.Timestamp;
+import java.sql.Types;
 
 import javax.sql.DataSource;
 import java.sql.*;
@@ -72,4 +76,35 @@ public class SessionDao {
             throw new RuntimeException("DB error setStatus", e);
         }
     }
+    public DynamicArray<SessionSummary> listSessions() {
+        // assumes you have expires_at column (you do, because your code already uses it)
+        String sql = "SELECT session_id, status, max_capacity, last_active_at, expires_at " +
+                "FROM sessions ORDER BY session_id DESC";
+
+        DynamicArray<SessionSummary> out = new DynamicArray<>(16);
+
+        try (Connection c = ds.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                int sid = rs.getInt("session_id");
+                String status = rs.getString("status");
+                int cap = rs.getInt("max_capacity");
+
+                Timestamp last = rs.getTimestamp("last_active_at");
+                long lastMillis = (last == null) ? 0L : last.getTime();
+
+                Timestamp exp = rs.getTimestamp("expires_at");
+                long expMillis = (exp == null) ? -1L : exp.getTime();
+
+                out.add(new SessionSummary(sid, status, cap, lastMillis, expMillis));
+            }
+            return out;
+
+        } catch (Exception e) {
+            throw new RuntimeException("DB error listSessions", e);
+        }
+    }
+
 }

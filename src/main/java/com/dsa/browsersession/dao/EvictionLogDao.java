@@ -1,6 +1,11 @@
 package com.dsa.browsersession.dao;
 
 import org.springframework.stereotype.Repository;
+import com.dsa.browsersession.domain.EvictionEntry;
+import com.dsa.browsersession.dsa.array.DynamicArray;
+
+import java.sql.ResultSet;
+import java.sql.Timestamp;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -26,23 +31,27 @@ public class EvictionLogDao {
             throw new RuntimeException("DB error insert eviction_log", e);
         }
     }
-    public com.dsa.browsersession.dsa.array.DynamicArray<String> listBySession(int sessionId) {
-        String sql = "SELECT eviction_id, tab_id, reason, evicted_at FROM eviction_log WHERE session_id = ? ORDER BY eviction_id DESC";
-        com.dsa.browsersession.dsa.array.DynamicArray<String> out = new com.dsa.browsersession.dsa.array.DynamicArray<>(16);
+    public DynamicArray<EvictionEntry> listBySession(int sessionId) {
+        String sql = "SELECT eviction_id, session_id, tab_id, reason, evicted_at " +
+                "FROM eviction_log WHERE session_id = ? ORDER BY eviction_id DESC";
 
-        try (java.sql.Connection c = ds.getConnection();
-             java.sql.PreparedStatement ps = c.prepareStatement(sql)) {
+        DynamicArray<EvictionEntry> out = new DynamicArray<>(16);
+
+        try (Connection c = ds.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
 
             ps.setInt(1, sessionId);
 
-            try (java.sql.ResultSet rs = ps.executeQuery()) {
+            try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    int eid = rs.getInt("eviction_id");
-                    int tabId = rs.getInt("tab_id");
+                    int id = rs.getInt("eviction_id");
+                    int sid = rs.getInt("session_id");
+                    int tid = rs.getInt("tab_id");
                     String reason = rs.getString("reason");
-                    java.sql.Timestamp t = rs.getTimestamp("evicted_at");
+                    Timestamp t = rs.getTimestamp("evicted_at");
+                    long millis = (t == null) ? 0L : t.getTime();
 
-                    out.add("evictionId=" + eid + ", tabId=" + tabId + ", reason=" + reason + ", time=" + t);
+                    out.add(new EvictionEntry(id, sid, tid, reason, millis));
                 }
             }
             return out;
@@ -51,5 +60,4 @@ public class EvictionLogDao {
             throw new RuntimeException("DB error listBySession eviction_log", e);
         }
     }
-
 }

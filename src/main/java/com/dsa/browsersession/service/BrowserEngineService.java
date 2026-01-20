@@ -1,4 +1,8 @@
 package com.dsa.browsersession.service;
+import com.dsa.browsersession.domain.SessionSummary;
+import com.dsa.browsersession.domain.EvictionEntry;
+import com.dsa.browsersession.domain.ActivityEntry;
+import com.dsa.browsersession.dsa.array.DynamicArray;
 
 import com.dsa.browsersession.command.AccessTabCommand;
 import com.dsa.browsersession.command.CloseTabCommand;
@@ -193,11 +197,22 @@ public class BrowserEngineService {
         return rt.lru.snapshotOrder();
     }
     public String[] evictionLog(int sessionId) {
-        com.dsa.browsersession.dsa.array.DynamicArray<String> arr = evictionLogDao.listBySession(sessionId);
+        DynamicArray<EvictionEntry> arr = evictionLogDao.listBySession(sessionId);
         int n = arr.size();
         String[] out = new String[n];
-        for (int i = 0; i < n; i++) out[i] = arr.get(i);
+        for (int i = 0; i < n; i++) out[i] = arr.get(i).toString();
         return out;
+    }
+    public DynamicArray<SessionSummary> listSessions() {
+        return sessionDao.listSessions();
+    }
+
+    public DynamicArray<EvictionEntry> evictions(int sessionId) {
+        return evictionLogDao.listBySession(sessionId);
+    }
+
+    public DynamicArray<ActivityEntry> activity(int sessionId) {
+        return activityLogDao.listBySession(sessionId);
     }
 
 }
