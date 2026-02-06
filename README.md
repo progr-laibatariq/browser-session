@@ -121,7 +121,7 @@ When the number of tabs exceeds session capacity:
 ---
 
 ## Project Structure
-> (Names may vary slightly depending on your package layout, but the concept is the same.)
+
 
 - `src/main/java/.../controller/`  
   REST controllers (sessions, tabs, analytics)
