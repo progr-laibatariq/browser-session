@@ -86,7 +86,6 @@ public final class DoublyLinkedList<T> {
     }
 
     public void clear() {
-        // avoid built-in algorithms; explicit traversal
         DoublyNode<T> cur = head;
         while (cur != null) {
             DoublyNode<T> next = cur.next;

@@ -167,12 +167,10 @@ public final class CustomHashMap<K, V> {
     }
 
     private int hash(K key) {
-        // Use key.hashCode (not a DS/algorithm like Collections)
         return key.hashCode();
     }
 
     private int spread(int h) {
-        // similar to standard spread, but it's just bit mixing (not using library algo)
         h ^= (h >>> 16);
         return h;
     }

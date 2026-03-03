@@ -17,7 +17,7 @@ public final class CustomDeque<T> {
 
     public T peekFront() {
         DoublyNode<T> n = list.headNode();
-        return (n == null) ? null : n.value;
+        return (n == null) ? null : n.value;    //ternary operator to safely return the node’s value: if n is null, it returns null; otherwise, it returns n.value, avoiding a null-pointer access.
     }
 
     public T peekBack() {

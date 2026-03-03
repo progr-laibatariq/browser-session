@@ -4,18 +4,26 @@ public final class MaxHeap<T extends Comparable<T>> {
     private Object[] data;
     private int size;
 
-    public MaxHeap() { this(16); }
+    public MaxHeap() {
+        this(16);
+    }
     public MaxHeap(int cap) {
-        if (cap < 1) cap = 1;
+        if (cap < 1)
+            cap = 1;
         data = new Object[cap];
         size = 0;
     }
 
-    public int size() { return size; }
-    public boolean isEmpty() { return size == 0; }
+    public int size() {
+        return size;
+    }
+    public boolean isEmpty() {
+        return size == 0;
+    }
 
     public T peek() {
-        if (size == 0) return null;
+        if (size == 0)
+            return null;
         @SuppressWarnings("unchecked")
         T v = (T) data[0];
         return v;

@@ -9,12 +9,13 @@ public final class DynamicArray<T> {
     }
 
     public DynamicArray(int initialCapacity) {
-        if (initialCapacity < 1) initialCapacity = 1;
+        if (initialCapacity < 1)
+            initialCapacity = 1;
         this.data = new Object[initialCapacity];
         this.size = 0;
     }
 
-    public int size() {
+    public int size(){
         return size;
     }
 
@@ -40,7 +41,8 @@ public final class DynamicArray<T> {
     }
 
     public T removeLast() {
-        if (size == 0) return null;
+        if (size == 0)
+            return null;
         int last = size - 1;
         @SuppressWarnings("unchecked")
         T v = (T) data[last];
@@ -51,17 +53,21 @@ public final class DynamicArray<T> {
 
     public void clear() {
         // No Arrays.fill (avoid built-in algorithms)
-        for (int i = 0; i < size; i++) data[i] = null;
+        for (int i = 0; i < size; i++)
+            data[i] = null;
         size = 0;
     }
 
     private void ensureCapacity(int needed) {
-        if (needed <= data.length) return;
+        if (needed <= data.length)
+            return;
         int newCap = data.length * 2;
-        if (newCap < needed) newCap = needed;
+        if (newCap < needed)
+            newCap = needed;
 
         Object[] newData = new Object[newCap];
-        for (int i = 0; i < size; i++) newData[i] = data[i];
+        for (int i = 0; i < size; i++)
+            newData[i] = data[i];
         data = newData;
     }
 
