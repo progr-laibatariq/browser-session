@@ -166,7 +166,427 @@ src/
 │           └── app.js           # UI logic (fetch API calls)
 └── test/
 ```
+```mermaid
+classDiagram
+    direction TB
 
+    %% ─────────────────────────────────────────
+    %% CONTROLLERS
+    %% ─────────────────────────────────────────
+    class SessionController {
+        -BrowserEngineService engine
+        +create(CreateSessionReq) CreateSessionRes
+        +listSessions() SessionSummary[]
+        +undo(sid) boolean
+        +redo(sid) boolean
+        +evictions(sid) EvictionEntry[]
+        +activity(sid) ActivityEntry[]
+    }
+
+    class TabController {
+        -BrowserEngineService engine
+        +open(sid, OpenTabReq) OpenTabRes
+        +access(sid, tid) void
+        +close(sid, tid) void
+        +list(sid) TabRecord[]
+        +lru(sid) int[]
+    }
+
+    class AnalyticsController {
+        -BrowserEngineService engine
+        +topTabs(sid, k, windowSeconds) CountEntry[]
+    }
+
+    %% ─────────────────────────────────────────
+    %% SERVICE LAYER
+    %% ─────────────────────────────────────────
+    class BrowserEngineService {
+        +TAB_TTL_MILLIS : long
+        +SESSION_TTL_MILLIS : long
+        +ANALYTICS_WINDOW_MILLIS : long
+        -SessionDao sessionDao
+        -TabDao tabDao
+        -AccessLogDao accessLogDao
+        -ActivityLogDao activityLogDao
+        -EvictionLogDao evictionLogDao
+        -RuntimeStore runtimeStore
+        +createSession(capacity) int
+        +openTab(sessionId, url) int
+        +closeTab(sessionId, tabId) void
+        +accessTab(sessionId, tabId) void
+        +undo(sessionId) boolean
+        +redo(sessionId) boolean
+        +topK(sessionId, k, windowSeconds) CountEntry[]
+        +listSessions() DynamicArray~SessionSummary~
+        +listTabs(sessionId) DynamicArray~TabRecord~
+        +evictions(sessionId) DynamicArray~EvictionEntry~
+        +activity(sessionId) DynamicArray~ActivityEntry~
+        +lruOrder(sessionId) int[]
+        +expireTabById(tabId) void
+        +expireSessionById(sessionId) void
+    }
+
+    class SessionRuntime {
+        +sessionId : int
+        +commandManager : CommandManager
+        +analytics : AnalyticsService
+        +expiration : ExpirationManager
+        +lru : LruTabManager
+    }
+
+    class RuntimeStore {
+        -CustomHashMap~Integer, SessionRuntime~ map
+        +get(sessionId) SessionRuntime
+        +put(sessionId, rt) void
+        +forEach(visitor) void
+    }
+
+    class LruTabManager {
+        -DoublyLinkedList~Integer~ list
+        -CustomHashMap~Integer, DoublyNode~ nodeByTabId
+        +addToFront(tabId) void
+        +remove(tabId) void
+        +touch(tabId) void
+        +peekLeastRecentlyUsed() int
+        +pickEvictionCandidate(activeTabId) int
+        +snapshotOrder() int[]
+        +restoreOrder(order) void
+        +size() int
+        +clear() void
+    }
+
+    class AnalyticsService {
+        -CustomDeque~AccessEvent~ windowQ
+        -CustomHashMap~Integer, Integer~ counts
+        +recordAccess(tabId, nowMillis, windowMillis) void
+        +topK(k, nowMillis, windowMillis) CountEntry[]
+        +undoLastAccess(tabId, timeMillis, nowMillis, windowMillis) boolean
+    }
+
+    class ExpirationManager {
+        -MinHeap~ExpiryEvent~ heap
+        -CustomHashMap~Integer, Integer~ versionMap
+        -ExpireCallback callback
+        +scheduleTabExpiry(tabId, expiresAtMillis) void
+        +scheduleSessionExpiry(sessionId, expiresAtMillis) void
+        +cancelTabExpiry(tabId) void
+        +cancelSessionExpiry(sessionId) void
+        +expireDue(nowMillis) int
+    }
+
+    class ExpireCallback {
+        <<interface>>
+        +expireTab(tabId) void
+        +expireSession(sessionId) void
+    }
+
+    %% ─────────────────────────────────────────
+    %% COMMAND PATTERN
+    %% ─────────────────────────────────────────
+    class Command {
+        <<interface>>
+        +execute() void
+        +undo() void
+        +name() String
+    }
+
+    class CommandManager {
+        -CustomStack~Command~ undoStack
+        -CustomStack~Command~ redoStack
+        +executeCommand(cmd) void
+        +undo() boolean
+        +redo() boolean
+        +undoSize() int
+        +redoSize() int
+    }
+
+    class OpenTabCommand {
+        -int sessionId
+        -String url
+        -int openedTabId
+        -TabRecord openedRecord
+        -DynamicArray~TabRecord~ evictedRecords
+        -int prevActiveTabId
+        -int[] prevLruOrder
+        +execute() void
+        +undo() void
+        +name() String
+        +getOpenedTabId() int
+    }
+
+    class AccessTabCommand {
+        -int sessionId
+        -int tabId
+        -int prevActiveTabId
+        -int[] prevLruOrder
+        -long recordAccessTimeMillis
+        +execute() void
+        +undo() void
+        +name() String
+    }
+
+    class CloseTabCommand {
+        -int sessionId
+        -int tabId
+        -TabRecord closedRecord
+        -int prevActiveTabId
+        -int[] prevLruOrder
+        +execute() void
+        +undo() void
+        +name() String
+    }
+
+    %% ─────────────────────────────────────────
+    %% DAO LAYER
+    %% ─────────────────────────────────────────
+    class SessionDao {
+        -DataSource ds
+        +createSession(maxCapacity, nowMillis, expiresAtMillis) int
+        +getMaxCapacity(sessionId) int
+        +updateLastActiveAndExpiry(sessionId, lastActiveMillis, expiresAtMillis) void
+        +setStatus(sessionId, status) void
+        +listSessions() DynamicArray~SessionSummary~
+    }
+
+    class TabDao {
+        -DataSource ds
+        +insertTab(sessionId, url, isActive, nowMillis, expiresAtMillis) int
+        +insertTabWithId(TabRecord) void
+        +deleteTab(tabId) void
+        +getTabRecord(tabId) TabRecord
+        +updateAccessAndExpiry(tabId, lastAccessMillis, expiresAtMillis) void
+        +setActiveTab(sessionId, tabId) void
+        +getActiveTabId(sessionId) int
+        +countTabsInSession(sessionId) int
+        +listTabsInSession(sessionId) DynamicArray~TabRecord~
+    }
+
+    class AccessLogDao {
+        -DataSource ds
+        +insertAccess(tabId, accessTimeMillis) void
+    }
+
+    class ActivityLogDao {
+        -DataSource ds
+        +insert(sessionId, operation, details) void
+        +listBySession(sessionId) DynamicArray~ActivityEntry~
+    }
+
+    class EvictionLogDao {
+        -DataSource ds
+        +insert(sessionId, tabId, reason) void
+        +listBySession(sessionId) DynamicArray~EvictionEntry~
+    }
+
+    %% ─────────────────────────────────────────
+    %% DOMAIN (DTOs)
+    %% ─────────────────────────────────────────
+    class TabRecord {
+        +int tabId
+        +int sessionId
+        +long createdAtMillis
+        +String url
+        +boolean isActive
+        +long lastAccessAtMillis
+        +long expiresAtMillis
+    }
+
+    class SessionSummary {
+        +int sessionId
+        +String status
+        +int maxCapacity
+        +long lastActiveAtMillis
+        +long expiresAtMillis
+    }
+
+    class EvictionEntry {
+        +int evictionId
+        +int sessionId
+        +int tabId
+        +String reason
+        +long evictedAtMillis
+    }
+
+    class ActivityEntry {
+        +int logId
+        +int sessionId
+        +String operation
+        +String details
+        +long createdAtMillis
+    }
+
+    class CountEntry {
+        +int tabId
+        +int count
+        +compareTo(other) int
+    }
+
+    class AccessEvent {
+        +long timeMillis
+        +int tabId
+    }
+
+    class ExpiryEvent {
+        +long expiresAtMillis
+        +int type
+        +int id
+        +int version
+        +compareTo(other) int
+    }
+
+    %% ─────────────────────────────────────────
+    %% DSA LAYER
+    %% ─────────────────────────────────────────
+    class DynamicArray~T~ {
+        -Object[] data
+        -int size
+        +add(value) void
+        +get(index) T
+        +set(index, value) void
+        +removeLast() T
+        +size() int
+        +isEmpty() boolean
+        +clear() void
+    }
+
+    class CustomStack~T~ {
+        -DynamicArray~T~ arr
+        +push(value) void
+        +pop() T
+        +peek() T
+        +size() int
+        +isEmpty() boolean
+        +clear() void
+    }
+
+    class CustomHashMap~K,V~ {
+        -Object[] keys
+        -Object[] values
+        -byte[] states
+        -int size
+        +get(key) V
+        +put(key, value) V
+        +remove(key) V
+        +containsKey(key) boolean
+        +size() int
+        +clear() void
+        +forEach(visitor) void
+    }
+
+    class DoublyLinkedList~T~ {
+        -DoublyNode~T~ head
+        -DoublyNode~T~ tail
+        -int size
+        +addFirst(value) DoublyNode~T~
+        +addLast(value) DoublyNode~T~
+        +removeFirst() T
+        +removeLast() T
+        +removeNode(node) void
+        +moveToFront(node) void
+        +headNode() DoublyNode~T~
+        +tailNode() DoublyNode~T~
+        +size() int
+        +clear() void
+    }
+
+    class DoublyNode~T~ {
+        +T value
+        +DoublyNode~T~ prev
+        +DoublyNode~T~ next
+    }
+
+    class CustomDeque~T~ {
+        -DoublyLinkedList~T~ list
+        +pushBack(value) void
+        +pushFront(value) void
+        +popFront() T
+        +popBack() T
+        +peekFront() T
+        +peekBack() T
+        +size() int
+        +isEmpty() boolean
+    }
+
+    class MinHeap~T~ {
+        -Object[] data
+        -int size
+        +push(value) void
+        +pop() T
+        +peek() T
+        +size() int
+        +isEmpty() boolean
+    }
+
+    class MaxHeap~T~ {
+        -Object[] data
+        -int size
+        +push(value) void
+        +pop() T
+        +peek() T
+        +size() int
+        +isEmpty() boolean
+    }
+
+    %% ─────────────────────────────────────────
+    %% RELATIONSHIPS
+    %% ─────────────────────────────────────────
+
+    %% Controllers → Service
+    SessionController --> BrowserEngineService : uses
+    TabController --> BrowserEngineService : uses
+    AnalyticsController --> BrowserEngineService : uses
+
+    %% Service → DAOs
+    BrowserEngineService --> SessionDao : uses
+    BrowserEngineService --> TabDao : uses
+    BrowserEngineService --> AccessLogDao : uses
+    BrowserEngineService --> ActivityLogDao : uses
+    BrowserEngineService --> EvictionLogDao : uses
+    BrowserEngineService --> RuntimeStore : uses
+
+    %% Service → Runtime
+    BrowserEngineService ..|> ExpireCallback : implements
+    RuntimeStore --> SessionRuntime : stores
+    SessionRuntime --> CommandManager : has
+    SessionRuntime --> AnalyticsService : has
+    SessionRuntime --> ExpirationManager : has
+    SessionRuntime --> LruTabManager : has
+
+    %% Commands
+    Command <|.. OpenTabCommand : implements
+    Command <|.. AccessTabCommand : implements
+    Command <|.. CloseTabCommand : implements
+    CommandManager --> Command : manages
+    CommandManager --> CustomStack : uses
+
+    %% ExpirationManager
+    ExpirationManager --> MinHeap : uses
+    ExpirationManager --> CustomHashMap : uses
+    ExpirationManager --> ExpireCallback : calls
+
+    %% LruTabManager
+    LruTabManager --> DoublyLinkedList : uses
+    LruTabManager --> CustomHashMap : uses
+
+    %% AnalyticsService
+    AnalyticsService --> CustomDeque : uses
+    AnalyticsService --> CustomHashMap : uses
+    AnalyticsService --> MaxHeap : uses
+
+    %% DSA internal
+    CustomStack --> DynamicArray : uses
+    CustomDeque --> DoublyLinkedList : uses
+    DoublyLinkedList --> DoublyNode : contains
+
+    %% Domain used by DAOs
+    SessionDao --> SessionSummary : returns
+    TabDao --> TabRecord : returns
+    EvictionLogDao --> EvictionEntry : returns
+    ActivityLogDao --> ActivityEntry : returns
+    AnalyticsService --> CountEntry : returns
+    AnalyticsService --> AccessEvent : stores
+    ExpirationManager --> ExpiryEvent : stores
+```
 ---
 
 ## 🗄️ Database Setup
